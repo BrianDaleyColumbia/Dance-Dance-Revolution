@@ -6,7 +6,7 @@ display_info = pg.display.Info()
 
 
 class Arrow(pg.sprite.Sprite):
-    def __init__(self, x, y, image, dim):
+    def __init__(self, x, y, image, dim, dir):
         super().__init__()
         image = pg.transform.scale(image, (dim, dim))
         self.image = image
@@ -14,17 +14,23 @@ class Arrow(pg.sprite.Sprite):
         self.rect.midtop = (x, y)
         self.x = x
         self.y = y
+        self.dir = dir
 
 
 class DynamicArrow(Arrow):
-    def __init__(self, x, y, image, dim):
-        super().__init__(x, y, image, dim)
+    def __init__(self, x, y, image, dim, dir):
+        super().__init__(x, y, image, dim, dir)
+
+    def check_death(self):
+        if self.rect.bottom <= 0:
+            pg.sprite.Sprite.kill(self)
 
     def move(self, y_shift):
         self.y -= y_shift
         self.rect.midtop = (self.x, self.y)
+        self.check_death()
 
 
 class StaticArrow(Arrow):
-    def __init__(self, x, y, image, dim):
-        super().__init__(x, y, image, dim)
+    def __init__(self, x, y, image, dim, dir):
+        super().__init__(x, y, image, dim, dir)
