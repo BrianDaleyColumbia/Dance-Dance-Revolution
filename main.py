@@ -19,6 +19,12 @@ COL1_POS = int(DISPLAYSURF.get_width() / 2) - 3 * int(ARROW_PADDING / 2) - 3 * i
 COL2_POS = int(DISPLAYSURF.get_width() / 2) - int(ARROW_PADDING / 2) - int(ARROW_DIM / 2)
 COL3_POS = int(DISPLAYSURF.get_width() / 2) + int(ARROW_PADDING / 2) + int(ARROW_DIM / 2)
 COL4_POS = int(DISPLAYSURF.get_width() / 2) + 3 * int(ARROW_PADDING / 2) + 3 * int(ARROW_DIM / 2)
+YELLOW = (255, 255, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+PURPLE = (255, 0, 255)
+ORANGE = (255, 165, 0)
+RED = (255, 0, 0)
 
 left_arrow_img = pg.image.load("assets/leftArrows/tile003.png")
 down_arrow_img = pg.image.load("assets/downArrows/tile003.png")
@@ -29,22 +35,29 @@ down_static_img = pg.image.load("assets/staticArrows/staticDown.png")
 up_static_img = pg.image.load("assets/staticArrows/staticUp.png")
 right_static_img = pg.image.load("assets/staticArrows/staticRight.png")
 
+font = pg.font.Font("serpentine.ttf", 12)
+perfect_msg = font.render("Perfect!!", True, YELLOW)
+great_msg = font.render("Great!", True, GREEN)
+good_msg = font.render("Good", True, BLUE)
+boo_msg = font.render("Boo", True, PURPLE)
+miss_msg = font.render("Miss...", True, RED)
+
 dynamic_sprites = pg.sprite.Group()
-dynamic_sprites.add(DynamicArrow(COL3_POS, SCREEN_HEIGHT, up_arrow_img, ARROW_DIM, UP))
 left_arrows, right_arrows, up_arrows, down_arrows = \
     pg.sprite.Group(), pg.sprite.Group(), pg.sprite.Group(), pg.sprite.Group()
-static_sprites = pg.sprite.Group()
-static_sprites.add(StaticArrow(COL1_POS, GHOST_YPADDING, left_static_img, ARROW_DIM, LEFT))
-static_sprites.add(StaticArrow(COL2_POS, GHOST_YPADDING, down_static_img, ARROW_DIM, DOWN))
-static_sprites.add(StaticArrow(COL3_POS, GHOST_YPADDING, up_static_img, ARROW_DIM, UP))
-static_sprites.add(StaticArrow(COL4_POS, GHOST_YPADDING, right_static_img, ARROW_DIM, RIGHT))
+static_arrows = pg.sprite.Group()
+static_arrows.add(StaticArrow(COL1_POS, GHOST_YPADDING, left_static_img, ARROW_DIM, LEFT))
+static_arrows.add(StaticArrow(COL2_POS, GHOST_YPADDING, down_static_img, ARROW_DIM, DOWN))
+static_arrows.add(StaticArrow(COL3_POS, GHOST_YPADDING, up_static_img, ARROW_DIM, UP))
+static_arrows.add(StaticArrow(COL4_POS, GHOST_YPADDING, right_static_img, ARROW_DIM, RIGHT))
 
 speed = 10/17
 
 
+
 def draw_background():
     DISPLAYSURF.fill((0, 0, 0))
-    for entity in static_sprites:
+    for entity in static_arrows:
         DISPLAYSURF.blit(entity.image, entity.rect)
 
 
@@ -67,13 +80,51 @@ def make_note(dir):
         right_arrows.add(arrow)
 
 
-starting_tick = pg.time.get_ticks()
+def get_hit(arrow, bound):
+    pos = arrow.get_pos()
+    if GHOST_YPADDING - bound <= pos <= GHOST_YPADDING + bound:
+        print("Perfect")
+    elif GHOST_YPADDING - bound*2 <= pos <= GHOST_YPADDING + bound*2:
+        print("Great")
+    elif GHOST_YPADDING - bound*5 <= pos <= GHOST_YPADDING + bound*5:
+        print("Good")
+    else:
+        print("Boo")
+
+
+def handle_hits(key):
+    if key == K_LEFT or key == K_a:
+        collisions = pg.sprite.groupcollide(left_arrows, static_arrows, False, False)
+        if collisions:
+            get_hit(list(collisions.keys())[0], dt * speed)
+            list(collisions.keys())[0].kill()
+    if key == K_DOWN or key == K_s:
+        collisions = pg.sprite.groupcollide(down_arrows, static_arrows, False, False)
+        if collisions:
+            get_hit(list(collisions.keys())[0], dt * speed)
+            list(collisions.keys())[0].kill()
+    if key == K_UP or key == K_w:
+        collisions = pg.sprite.groupcollide(up_arrows, static_arrows, False, False)
+        if collisions:
+            get_hit(list(collisions.keys())[0], dt * speed)
+            list(collisions.keys())[0].kill()
+    if key == K_RIGHT or key == K_d:
+        collisions = pg.sprite.groupcollide(right_arrows, static_arrows, False, False)
+        if collisions:
+            get_hit(list(collisions.keys())[0], dt * speed)
+            list(collisions.keys())[0].kill()
+
 dt = 0
+starting_tick = pg.time.get_ticks()
 while True:
     for event in pg.event.get():
         if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
             pg.quit()
             sys.exit()
+        if event.type == KEYDOWN:
+            keys = pg.key.get_pressed()
+            handle_hits(event.key)
+
 
     for entity in dynamic_sprites:
         entity.move(dt * speed)

@@ -15,6 +15,8 @@ class Arrow(pg.sprite.Sprite):
         self.x = x
         self.y = y
         self.dir = dir
+    def get_pos(self):
+        return self.y
 
 
 class DynamicArrow(Arrow):
@@ -24,6 +26,7 @@ class DynamicArrow(Arrow):
     def check_death(self):
         if self.rect.bottom <= 0:
             pg.sprite.Sprite.kill(self)
+            print("Miss")
 
     def move(self, y_shift):
         self.y -= y_shift
