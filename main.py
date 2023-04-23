@@ -26,9 +26,10 @@ song_beats = [32,
 
 FPS = 60
 MS_PER_FRAME = (1/FPS) * 1000
-BPM = 170
+BPM = 170.2
 INTERVAL = (60000/BPM)
 LOW_INTERVAL = INTERVAL - (1000 / (FPS * 2))
+# LOW_INTERVAL = (1000 / (FPS * 2))
 SCORES = {"perfect" : 777, "great" : 555, "good" : 333, "boo" : 0, "miss" : -333}
 ARROW_PADDING = 10
 ARROW_DIM = 150
@@ -205,6 +206,19 @@ def display_combo(combo_disp):
     DISPLAYSURF.blit(combo_msg, combo_rect)
 
 
+def restart():
+    global combo, score, last_note_time, feedback_tick
+    combo = 0
+    last_note_time = 32 * INTERVAL - 1600
+    score = 0
+    feedback_tick = -1000
+    mixer.music.stop()
+    mixer.music.play(start=0.25)
+    for entity in dynamic_sprites:
+        entity.kill()
+        feedback = ""
+
+
 def handle_hits(key):
     hit_val = ""
     global combo
@@ -235,13 +249,11 @@ def handle_hits(key):
     return hit_val
 
 dt = 0
-song_time = 0
-starting_tick = pg.time.get_ticks()
 feedback_tick = -1000
 feedback = ""
 mixer.music.play(start=0.25)
-# last_note_time = 32 * INTERVAL - 1600
-last_note_time = 1600
+last_note_time = 32 * INTERVAL - 1600
+# last_note_time = -1600
 combo = 0
 score = 0
 while True:
@@ -251,13 +263,15 @@ while True:
             pg.quit()
             sys.exit()
         if event.type == KEYDOWN:
-            keys = pg.key.get_pressed()
-            hit = handle_hits(event.key)
-            if hit != "":
-                score += int(SCORES[hit] * ((1 + combo / 100) if combo_active() else 1))
-                feedback = hit
-                feedback_tick = cur_tick
-                combo = combo + 1 if hit != "boo" else 0
+            if event.key == K_r:
+                restart()
+            else:
+                hit = handle_hits(event.key)
+                if hit != "":
+                    score += int(SCORES[hit] * ((1 + combo / 100) if combo_active() else 1))
+                    feedback = hit
+                    feedback_tick = cur_tick
+                    combo = combo + 1 if hit != "boo" else 0
 
     for entity in dynamic_sprites:
         entity.move(dt * speed)
@@ -271,9 +285,12 @@ while True:
     for entity in static_arrows:
         entity.update()
 
+    # if (INTERVAL * song_beats[0]) - LOW_INTERVAL <= mixer.music.get_pos() - last_note_time:
     if LOW_INTERVAL <= mixer.music.get_pos() - last_note_time:
         make_note(random.choice(["left", "down", "up", "right"]))
         last_note_time += INTERVAL
+        # last_note_time += INTERVAL * song_beats[0]
+        # song_beats.pop(0)
 # note to self, have starting arrow position be when it should be, not time issue
 
     success, video_image = video.read()
