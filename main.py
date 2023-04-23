@@ -1,18 +1,33 @@
 from sprites import *
 from pygame import mixer
 import random
+import numpy as np
+import cv2
 
 
 pg.init()
 mixer.init()
-mixer.music.load("asitwas.mp3")
-mixer.music.set_volume(0.2)
+mixer.music.load("Stay.mp3")
+mixer.music.set_volume(0.5)
 fps_clock = pg.time.Clock()
+video = cv2.VideoCapture("driving-slow.mp4")
 DISPLAYSURF = pg.display.set_mode((0, 0), pg.FULLSCREEN)
 
+song_beats = [32,
+              0.5, 0.5, 0.5, 1.5,           0.5, 0.5,
+              0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
+              0.5, 0.5, 0.5, 1.5,           0.5, 0.5,
+              0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1,
+              0.5, 0.5, 0.5, 1.5,           0.5, 0.5,
+              0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
+              0.5, 0.5, 0.5, 1.5,           0.5, 0.5,
+              0.5, 1.5,           1.5,           0.5,
+              1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
 FPS = 60
-BPM = 174.2
-INTERVAL = (60/BPM * 1000)
+MS_PER_FRAME = (1/FPS) * 1000
+BPM = 170
+INTERVAL = (60000/BPM)
 LOW_INTERVAL = INTERVAL - (1000 / (FPS * 2))
 SCORES = {"perfect" : 777, "great" : 555, "good" : 333, "boo" : 0, "miss" : -333}
 ARROW_PADDING = 10
@@ -36,14 +51,40 @@ ORANGE = (255, 165, 0)
 RED = (255, 0, 0)
 WHITE = (255, 255, 255)
 
-left_arrow_img = pg.image.load("assets/leftArrows/tile003.png")
-down_arrow_img = pg.image.load("assets/downArrows/tile003.png")
-up_arrow_img = pg.image.load("assets/upArrows/tile003.png")
-right_arrow_img = pg.image.load("assets/rightArrows/tile003.png")
-left_static_img = pg.image.load("assets/staticArrows/staticLeft.png")
-down_static_img = pg.image.load("assets/staticArrows/staticDown.png")
-up_static_img = pg.image.load("assets/staticArrows/staticUp.png")
-right_static_img = pg.image.load("assets/staticArrows/staticRight.png")
+left_imgs = []
+for i in range(16):
+    img = pg.image.load("assets/leftArrows/tile" + str(i).zfill(3) + ".png")
+    img = pg.transform.scale(img, (ARROW_DIM, ARROW_DIM))
+    left_imgs.append(img)
+down_imgs = []
+for i in range(16):
+    img = pg.image.load("assets/downArrows/tile" + str(i).zfill(3) + ".png")
+    img = pg.transform.scale(img, (ARROW_DIM, ARROW_DIM))
+    down_imgs.append(img)
+up_imgs = []
+for i in range(16):
+    img = pg.image.load("assets/upArrows/tile" + str(i).zfill(3) + ".png")
+    img = pg.transform.scale(img, (ARROW_DIM, ARROW_DIM))
+    up_imgs.append(img)
+right_imgs = []
+for i in range(16):
+    img = pg.image.load("assets/rightArrows/tile" + str(i).zfill(3) + ".png")
+    img = pg.transform.scale(img, (ARROW_DIM, ARROW_DIM))
+    right_imgs.append(img)
+
+# left_arrow_img = pg.image.load("assets/leftArrows/tile003.png")
+# down_arrow_img = pg.image.load("assets/downArrows/tile003.png")
+# up_arrow_img = pg.image.load("assets/upArrows/tile003.png")
+# right_arrow_img = pg.image.load("assets/rightArrows/tile003.png")
+left_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticLeft.png"), (ARROW_DIM, ARROW_DIM))]
+left_static_imgs.append(pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 270), (ARROW_DIM, ARROW_DIM)))
+down_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticDown.png"), (ARROW_DIM, ARROW_DIM))]
+down_static_imgs.append(pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 0), (ARROW_DIM, ARROW_DIM)))
+up_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticUp.png"), (ARROW_DIM, ARROW_DIM))]
+up_static_imgs.append(pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 180), (ARROW_DIM, ARROW_DIM)))
+right_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticRight.png"), (ARROW_DIM, ARROW_DIM))]
+right_static_imgs.append(pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 90), (ARROW_DIM, ARROW_DIM)))
+
 
 font = pg.font.Font("serpentine.ttf", 50)
 combo_font = pg.font.Font("serpentine_reg.ttf", 100)
@@ -72,47 +113,56 @@ dynamic_sprites = pg.sprite.Group()
 left_arrows, right_arrows, up_arrows, down_arrows = \
     pg.sprite.Group(), pg.sprite.Group(), pg.sprite.Group(), pg.sprite.Group()
 static_arrows = pg.sprite.Group()
-static_arrows.add(StaticArrow(COL1_POS, GHOST_YPADDING, left_static_img, ARROW_DIM, LEFT))
-static_arrows.add(StaticArrow(COL2_POS, GHOST_YPADDING, down_static_img, ARROW_DIM, DOWN))
-static_arrows.add(StaticArrow(COL3_POS, GHOST_YPADDING, up_static_img, ARROW_DIM, UP))
-static_arrows.add(StaticArrow(COL4_POS, GHOST_YPADDING, right_static_img, ARROW_DIM, RIGHT))
+left_static_arrow = StaticArrow(COL1_POS, GHOST_YPADDING, left_static_imgs, LEFT)
+down_static_arrow = StaticArrow(COL2_POS, GHOST_YPADDING, down_static_imgs, DOWN)
+up_static_arrow = StaticArrow(COL3_POS, GHOST_YPADDING, up_static_imgs, UP)
+right_static_arrow = StaticArrow(COL4_POS, GHOST_YPADDING, right_static_imgs, RIGHT)
+static_arrows.add(left_static_arrow)
+static_arrows.add(down_static_arrow)
+static_arrows.add(up_static_arrow)
+static_arrows.add(right_static_arrow)
 
 speed = 10/17
 
 
 
-def draw_background():
-    DISPLAYSURF.fill((0, 0, 0))
+def draw_background(success, video_image):
+    if success:
+        video_surf = pg.image.frombuffer(video_image.tobytes(), video_image.shape[1::-1], "BGR")
+        video_surf = pg.transform.scale(video_surf, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        DISPLAYSURF.blit(video_surf, (0, 0))
+    else:
+        video.set(cv2.CAP_PROP_POS_MSEC, 0)
     for entity in static_arrows:
-        DISPLAYSURF.blit(entity.image, entity.rect)
+        DISPLAYSURF.blit(entity.get_image(), entity.rect)
 
 
 def make_note(dir):
     if dir == "left":
-        arrow = DynamicArrow(COL1_POS, SCREEN_HEIGHT, left_arrow_img, ARROW_DIM, LEFT)
+        arrow = DynamicArrow(COL1_POS, SCREEN_HEIGHT, left_imgs, LEFT)
         dynamic_sprites.add(arrow)
         left_arrows.add(arrow)
     if dir == "down":
-        arrow = DynamicArrow(COL2_POS, SCREEN_HEIGHT, down_arrow_img, ARROW_DIM, DOWN)
+        arrow = DynamicArrow(COL2_POS, SCREEN_HEIGHT, down_imgs, DOWN)
         dynamic_sprites.add(arrow)
         down_arrows.add(arrow)
     if dir == "up":
-        arrow = DynamicArrow(COL3_POS, SCREEN_HEIGHT, up_arrow_img, ARROW_DIM, UP)
+        arrow = DynamicArrow(COL3_POS, SCREEN_HEIGHT, up_imgs, UP)
         dynamic_sprites.add(arrow)
         up_arrows.add(arrow)
     if dir == "right":
-        arrow = DynamicArrow(COL4_POS, SCREEN_HEIGHT, right_arrow_img, ARROW_DIM, RIGHT)
+        arrow = DynamicArrow(COL4_POS, SCREEN_HEIGHT, right_imgs, RIGHT)
         dynamic_sprites.add(arrow)
         right_arrows.add(arrow)
 
 
 def get_hit(arrow, bound):
     pos = arrow.get_pos()
-    if GHOST_YPADDING - bound*2 <= pos <= GHOST_YPADDING + bound*2:
+    if GHOST_YPADDING - bound*3 <= pos <= GHOST_YPADDING + bound*3:
         return "perfect"
-    elif GHOST_YPADDING - bound*4 <= pos <= GHOST_YPADDING + bound*4:
+    elif GHOST_YPADDING - bound*5 <= pos <= GHOST_YPADDING + bound*5:
         return "great"
-    elif GHOST_YPADDING - bound*6 <= pos <= GHOST_YPADDING + bound*6:
+    elif GHOST_YPADDING - bound*7 <= pos <= GHOST_YPADDING + bound*7:
         return "good"
     else:
         return "boo"
@@ -162,18 +212,26 @@ def handle_hits(key):
     collisions = {}
     if key == K_LEFT or key == K_a:
         collisions = pg.sprite.groupcollide(left_arrows, static_arrows, False, False)
+        if collisions:
+            left_static_arrow.collision()
     if key == K_DOWN or key == K_s:
         collisions = pg.sprite.groupcollide(down_arrows, static_arrows, False, False)
+        if collisions:
+            down_static_arrow.collision()
     if key == K_UP or key == K_w:
         collisions = pg.sprite.groupcollide(up_arrows, static_arrows, False, False)
+        if collisions:
+            up_static_arrow.collision()
     if key == K_RIGHT or key == K_d:
         collisions = pg.sprite.groupcollide(right_arrows, static_arrows, False, False)
+        if collisions:
+            right_static_arrow.collision()
     if collisions:
         hit_val = get_hit(list(collisions.keys())[0], dt * speed)
         list(collisions.keys())[0].kill()
     else:
         combo = 0
-        score = max(0, score - 333)
+        score -= 333
     return hit_val
 
 dt = 0
@@ -181,8 +239,9 @@ song_time = 0
 starting_tick = pg.time.get_ticks()
 feedback_tick = -1000
 feedback = ""
-mixer.music.play()
-last_note_time = 4300
+mixer.music.play(start=0.25)
+# last_note_time = 32 * INTERVAL - 1600
+last_note_time = 1600
 combo = 0
 score = 0
 while True:
@@ -206,18 +265,22 @@ while True:
             feedback = "miss"
             feedback_tick = cur_tick
             combo = 0
-            score = max(0, score - 333)
+            score -= 333
+    # Takes 1515 ms to reach bottom
+
+    for entity in static_arrows:
+        entity.update()
 
     if LOW_INTERVAL <= mixer.music.get_pos() - last_note_time:
         make_note(random.choice(["left", "down", "up", "right"]))
         last_note_time += INTERVAL
-# last = 355, cur = 715, interval = 355
+# note to self, have starting arrow position be when it should be, not time issue
 
-
-    draw_background()
+    success, video_image = video.read()
+    draw_background(success, video_image)
     display_score(score)
     for entity in dynamic_sprites:
-        DISPLAYSURF.blit(entity.image, entity.rect)
+        DISPLAYSURF.blit(entity.get_image(), entity.rect)
 
     if cur_tick - feedback_tick <= 500:
         display_feedback(feedback)
