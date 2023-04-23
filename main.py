@@ -28,9 +28,10 @@ FPS = 60
 MS_PER_FRAME = (1/FPS) * 1000
 BPM = 170.2
 INTERVAL = (60000/BPM)
+NUM_NOTES = 353
 LOW_INTERVAL = INTERVAL - (1000 / (FPS * 2))
 # LOW_INTERVAL = (1000 / (FPS * 2))
-SCORES = {"perfect" : 777, "great" : 555, "good" : 333, "boo" : 0, "miss" : -333}
+SCORES = {"perfect" : 777777*1.1, "great" : 555555*1.1, "good" : 333333*1.1, "boo" : 0, "miss" : -333333*1.1}
 ARROW_PADDING = 10
 ARROW_DIM = 150
 GHOST_YPADDING = 25
@@ -207,7 +208,8 @@ def display_combo(combo_disp):
 
 
 def restart():
-    global combo, score, last_note_time, feedback_tick
+    global combo, score, last_note_time, feedback_tick, notes_generated
+    notes_generated = 0
     combo = 0
     last_note_time = 32 * INTERVAL - 1600
     score = 0
@@ -245,7 +247,7 @@ def handle_hits(key):
         list(collisions.keys())[0].kill()
     else:
         combo = 0
-        score -= 333
+        score = max(score - 333333, 0)
     return hit_val
 
 dt = 0
@@ -256,6 +258,7 @@ last_note_time = 32 * INTERVAL - 1600
 # last_note_time = -1600
 combo = 0
 score = 0
+notes_generated = 0
 while True:
     cur_tick = pg.time.get_ticks()
     for event in pg.event.get():
@@ -268,7 +271,7 @@ while True:
             else:
                 hit = handle_hits(event.key)
                 if hit != "":
-                    score += int(SCORES[hit] * ((1 + combo / 100) if combo_active() else 1))
+                    score = min(9999999999, int(score + SCORES[hit] * ((1 + combo / 5) if combo_active() else 1)))
                     feedback = hit
                     feedback_tick = cur_tick
                     combo = combo + 1 if hit != "boo" else 0
@@ -279,15 +282,16 @@ while True:
             feedback = "miss"
             feedback_tick = cur_tick
             combo = 0
-            score -= 333
+            score = max(score - 333333, 0)
     # Takes 1515 ms to reach bottom
 
     for entity in static_arrows:
         entity.update()
 
     # if (INTERVAL * song_beats[0]) - LOW_INTERVAL <= mixer.music.get_pos() - last_note_time:
-    if LOW_INTERVAL <= mixer.music.get_pos() - last_note_time:
+    if LOW_INTERVAL <= mixer.music.get_pos() - last_note_time and notes_generated < NUM_NOTES:
         make_note(random.choice(["left", "down", "up", "right"]))
+        notes_generated += 1
         last_note_time += INTERVAL
         # last_note_time += INTERVAL * song_beats[0]
         # song_beats.pop(0)
