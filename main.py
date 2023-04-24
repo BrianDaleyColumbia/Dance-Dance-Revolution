@@ -1,9 +1,7 @@
 from sprites import *
 from pygame import mixer
 import random
-import numpy as np
 import cv2
-
 
 pg.init()
 mixer.init()
@@ -13,25 +11,29 @@ fps_clock = pg.time.Clock()
 video = cv2.VideoCapture("driving-slow.mp4")
 DISPLAYSURF = pg.display.set_mode((0, 0), pg.FULLSCREEN)
 
-song_beats = [32,
-              0.5, 0.5, 0.5, 1.5,           0.5, 0.5,
-              0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
-              0.5, 0.5, 0.5, 1.5,           0.5, 0.5,
-              0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1,
-              0.5, 0.5, 0.5, 1.5,           0.5, 0.5,
-              0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
-              0.5, 0.5, 0.5, 1.5,           0.5, 0.5,
-              0.5, 1.5,           1.5,           0.5,
-              1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+BEAT_INDICES = [0, 4, 8, 12, 16, 20, 24, 26, 28, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+                50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 67, 72, 75, 80, 83, 88, 89, 90, 91, 92, 96,
+                97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117,
+                118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138,
+                139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159,
+                166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186,
+                187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207,
+                208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 224, 227, 232, 235, 240, 243, 248, 249,
+                250, 251, 256, 260, 262, 264, 270, 272, 276, 278, 280, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295,
+                296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316,
+                317, 318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337,
+                338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352]
+
+beat_indices = BEAT_INDICES.copy()
 
 FPS = 60
-MS_PER_FRAME = (1/FPS) * 1000
+MS_PER_FRAME = (1 / FPS) * 1000
 BPM = 170.2
-INTERVAL = (60000/BPM)
+INTERVAL = (60000 / BPM)
 NUM_NOTES = 353
 LOW_INTERVAL = INTERVAL - (1000 / (FPS * 2))
 # LOW_INTERVAL = (1000 / (FPS * 2))
-SCORES = {"perfect" : 777777*1.1, "great" : 555555*1.1, "good" : 333333*1.1, "boo" : 0, "miss" : -333333*1.1}
+SCORES = {"perfect": 999999, "great": 777777, "good": 555555, "boo": 0, "miss": -333333}
 ARROW_PADDING = 10
 ARROW_DIM = 150
 GHOST_YPADDING = 25
@@ -79,14 +81,19 @@ for i in range(16):
 # up_arrow_img = pg.image.load("assets/upArrows/tile003.png")
 # right_arrow_img = pg.image.load("assets/rightArrows/tile003.png")
 left_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticLeft.png"), (ARROW_DIM, ARROW_DIM))]
-left_static_imgs.append(pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 270), (ARROW_DIM, ARROW_DIM)))
+left_static_imgs.append(
+    pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 270),
+                       (ARROW_DIM, ARROW_DIM)))
 down_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticDown.png"), (ARROW_DIM, ARROW_DIM))]
-down_static_imgs.append(pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 0), (ARROW_DIM, ARROW_DIM)))
+down_static_imgs.append(pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 0),
+                                           (ARROW_DIM, ARROW_DIM)))
 up_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticUp.png"), (ARROW_DIM, ARROW_DIM))]
-up_static_imgs.append(pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 180), (ARROW_DIM, ARROW_DIM)))
+up_static_imgs.append(pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 180),
+                                         (ARROW_DIM, ARROW_DIM)))
 right_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticRight.png"), (ARROW_DIM, ARROW_DIM))]
-right_static_imgs.append(pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 90), (ARROW_DIM, ARROW_DIM)))
-
+right_static_imgs.append(
+    pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 90),
+                       (ARROW_DIM, ARROW_DIM)))
 
 font = pg.font.Font("serpentine.ttf", 50)
 combo_font = pg.font.Font("serpentine_reg.ttf", 100)
@@ -124,8 +131,7 @@ static_arrows.add(down_static_arrow)
 static_arrows.add(up_static_arrow)
 static_arrows.add(right_static_arrow)
 
-speed = 10/17
-
+speed = 10 / 17
 
 
 def draw_background(success, video_image):
@@ -160,11 +166,11 @@ def make_note(dir):
 
 def get_hit(arrow, bound):
     pos = arrow.get_pos()
-    if GHOST_YPADDING - bound*3 <= pos <= GHOST_YPADDING + bound*3:
+    if GHOST_YPADDING - bound * 3 <= pos <= GHOST_YPADDING + bound * 3:
         return "perfect"
-    elif GHOST_YPADDING - bound*5 <= pos <= GHOST_YPADDING + bound*5:
+    elif GHOST_YPADDING - bound * 5 <= pos <= GHOST_YPADDING + bound * 5:
         return "great"
-    elif GHOST_YPADDING - bound*7 <= pos <= GHOST_YPADDING + bound*7:
+    elif GHOST_YPADDING - bound * 7 <= pos <= GHOST_YPADDING + bound * 7:
         return "good"
     else:
         return "boo"
@@ -208,8 +214,9 @@ def display_combo(combo_disp):
 
 
 def restart():
-    global combo, score, last_note_time, feedback_tick, notes_generated
-    notes_generated = 0
+    global combo, score, last_note_time, feedback_tick, beat_pos, beat_indices
+    beat_indices = BEAT_INDICES.copy()
+    beat_pos = 0
     combo = 0
     last_note_time = 32 * INTERVAL - 1600
     score = 0
@@ -250,6 +257,7 @@ def handle_hits(key):
         score = max(score - 333333, 0)
     return hit_val
 
+
 dt = 0
 feedback_tick = -1000
 feedback = ""
@@ -258,7 +266,7 @@ last_note_time = 32 * INTERVAL - 1600
 # last_note_time = -1600
 combo = 0
 score = 0
-notes_generated = 0
+beat_pos = 0
 while True:
     cur_tick = pg.time.get_ticks()
     for event in pg.event.get():
@@ -289,13 +297,15 @@ while True:
         entity.update()
 
     # if (INTERVAL * song_beats[0]) - LOW_INTERVAL <= mixer.music.get_pos() - last_note_time:
-    if LOW_INTERVAL <= mixer.music.get_pos() - last_note_time and notes_generated < NUM_NOTES:
-        make_note(random.choice(["left", "down", "up", "right"]))
-        notes_generated += 1
+    if LOW_INTERVAL <= mixer.music.get_pos() - last_note_time and len(beat_indices) != 0:
+        if beat_indices[0] == beat_pos:
+            make_note(random.choice(["left", "down", "up", "right"]))
+            beat_indices.pop(0)
+        beat_pos += 1
         last_note_time += INTERVAL
         # last_note_time += INTERVAL * song_beats[0]
         # song_beats.pop(0)
-# note to self, have starting arrow position be when it should be, not time issue
+    # note to self, have starting arrow position be when it should be, not time issue
 
     success, video_image = video.read()
     draw_background(success, video_image)
