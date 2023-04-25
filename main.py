@@ -2,6 +2,8 @@ from sprites import *
 from pygame import mixer
 import random
 import cv2
+from pyfirmata import util, Arduino
+
 
 pg.init()
 mixer.init()
@@ -10,6 +12,16 @@ mixer.music.set_volume(0.5)
 fps_clock = pg.time.Clock()
 video = cv2.VideoCapture("driving-slow.mp4")
 DISPLAYSURF = pg.display.set_mode((0, 0), pg.FULLSCREEN)
+
+board = Arduino('/dev/tty.usbmodem1101')
+it = util.Iterator(board)
+it.start()
+
+left_analog = board.get_pin('a:0:i')
+down_analog = board.get_pin('a:1:i')
+up_analog = board.get_pin('a:2:i')
+right_analog = board.get_pin('a:3:i')
+THRESHOLD = .7
 
 BEAT_INDICES = [0, 4, 8, 12, 16, 20, 24, 26, 28, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
                 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 67, 72, 75, 80, 83, 88, 89, 90, 91, 92, 96,
@@ -183,6 +195,23 @@ def display_score(score):
     DISPLAYSURF.blit(score_msg, score_rect)
 
 
+def handle_sensors(keys):
+    new_keys = set()
+    key = None
+    if left_analog.read() >= THRESHOLD:
+        new_keys.add(K_LEFT)
+    if down_analog.read() >= THRESHOLD:
+        new_keys.add(K_DOWN)
+    if up_analog.read() >= THRESHOLD:
+        new_keys.add(K_UP)
+    if right_analog.read() >= THRESHOLD:
+        new_keys.add(K_RIGHT)
+    diff = new_keys - keys
+    if diff:
+        key = list(diff)[0]
+    return key, new_keys
+
+
 def display_feedback(feedback):
     global score
     if feedback == "perfect":
@@ -264,6 +293,7 @@ feedback = ""
 mixer.music.play(start=0.25)
 last_note_time = 32 * INTERVAL - 1600
 # last_note_time = -1600
+keys_pressed = set()
 combo = 0
 score = 0
 beat_pos = 0
@@ -283,6 +313,15 @@ while True:
                     feedback = hit
                     feedback_tick = cur_tick
                     combo = combo + 1 if hit != "boo" else 0
+
+    key, keys_pressed = handle_sensors(keys_pressed)
+    if key:
+        hit = handle_hits(key)
+        if hit != "":
+            score = min(9999999999, int(score + SCORES[hit] * ((1 + combo / 5) if combo_active() else 1)))
+            feedback = hit
+            feedback_tick = cur_tick
+            combo = combo + 1 if hit != "boo" else 0
 
     for entity in dynamic_sprites:
         entity.move(dt * speed)
