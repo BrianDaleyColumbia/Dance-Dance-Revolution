@@ -13,15 +13,15 @@ fps_clock = pg.time.Clock()
 video = cv2.VideoCapture("driving-slow.mp4")
 DISPLAYSURF = pg.display.set_mode((0, 0), pg.FULLSCREEN)
 
-board = Arduino('/dev/tty.usbmodem1101')
-it = util.Iterator(board)
-it.start()
-
-left_analog = board.get_pin('a:0:i')
-down_analog = board.get_pin('a:1:i')
-up_analog = board.get_pin('a:2:i')
-right_analog = board.get_pin('a:3:i')
-THRESHOLD = .7
+# board = Arduino('/dev/tty.usbmodem1101')
+# it = util.Iterator(board)
+# it.start()
+#
+# left_analog = board.get_pin('a:0:i')
+# down_analog = board.get_pin('a:1:i')
+# up_analog = board.get_pin('a:2:i')
+# right_analog = board.get_pin('a:3:i')
+# THRESHOLD = .7
 
 BEAT_INDICES = [0, 4, 8, 12, 16, 20, 24, 26, 28, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
                 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 67, 72, 75, 80, 83, 88, 89, 90, 91, 92, 96,
@@ -44,7 +44,6 @@ BPM = 170.2
 INTERVAL = (60000 / BPM)
 NUM_NOTES = 353
 LOW_INTERVAL = INTERVAL - (1000 / (FPS * 2))
-# LOW_INTERVAL = (1000 / (FPS * 2))
 SCORES = {"perfect": 999999, "great": 777777, "good": 555555, "boo": 0, "miss": -333333}
 ARROW_PADDING = 10
 ARROW_DIM = 150
@@ -55,10 +54,11 @@ LEFT = "left"
 RIGHT = "right"
 UP = "up"
 DOWN = "down"
-COL1_POS = int(SCREEN_WIDTH / 2) - 3 * int(ARROW_PADDING / 2) - 3 * int(ARROW_DIM / 2)
-COL2_POS = int(SCREEN_WIDTH / 2) - int(ARROW_PADDING / 2) - int(ARROW_DIM / 2)
-COL3_POS = int(SCREEN_WIDTH / 2) + int(ARROW_PADDING / 2) + int(ARROW_DIM / 2)
-COL4_POS = int(SCREEN_WIDTH / 2) + 3 * int(ARROW_PADDING / 2) + 3 * int(ARROW_DIM / 2)
+COL1_POS = int(SCREEN_WIDTH / 2) - 2 * ARROW_PADDING - 2 * ARROW_DIM
+COL2_POS = int(SCREEN_WIDTH / 2) - ARROW_PADDING - ARROW_DIM
+COL3_POS = int(SCREEN_WIDTH / 2)
+COL4_POS = int(SCREEN_WIDTH / 2) + ARROW_PADDING + ARROW_DIM
+COL5_POS = int(SCREEN_WIDTH / 2) + 2 * ARROW_PADDING + 2 * ARROW_DIM
 YELLOW = (255, 255, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
@@ -88,24 +88,28 @@ for i in range(16):
     img = pg.transform.scale(img, (ARROW_DIM, ARROW_DIM))
     right_imgs.append(img)
 
-# left_arrow_img = pg.image.load("assets/leftArrows/tile003.png")
-# down_arrow_img = pg.image.load("assets/downArrows/tile003.png")
-# up_arrow_img = pg.image.load("assets/upArrows/tile003.png")
-# right_arrow_img = pg.image.load("assets/rightArrows/tile003.png")
-left_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticLeft.png"), (ARROW_DIM, ARROW_DIM))]
-left_static_imgs.append(
-    pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 270),
-                       (ARROW_DIM, ARROW_DIM)))
-down_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticDown.png"), (ARROW_DIM, ARROW_DIM))]
-down_static_imgs.append(pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 0),
-                                           (ARROW_DIM, ARROW_DIM)))
-up_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticUp.png"), (ARROW_DIM, ARROW_DIM))]
-up_static_imgs.append(pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 180),
-                                         (ARROW_DIM, ARROW_DIM)))
-right_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticRight.png"), (ARROW_DIM, ARROW_DIM))]
-right_static_imgs.append(
-    pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 90),
-                       (ARROW_DIM, ARROW_DIM)))
+gestures = ["call_me", "fist", "okay", "peace", "rock", "stop", "thumbs_down", "thumbs_up"]
+gesture_imgs = []
+for i in gestures:
+    img = pg.image.load("assets/gestures/" + i + ".png")
+    img = pg.transform.scale(img, (ARROW_DIM, ARROW_DIM))
+    gesture_imgs.append(img)
+
+left_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticLeft.png"), (ARROW_DIM, ARROW_DIM)),
+                    pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 270),
+                                       (ARROW_DIM, ARROW_DIM))]
+down_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticDown.png"), (ARROW_DIM, ARROW_DIM)),
+                    pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 0),
+                                       (ARROW_DIM, ARROW_DIM))]
+up_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticUp.png"), (ARROW_DIM, ARROW_DIM)),
+                  pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 180),
+                                     (ARROW_DIM, ARROW_DIM))]
+right_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticRight.png"), (ARROW_DIM, ARROW_DIM)),
+                     pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 90),
+                                        (ARROW_DIM, ARROW_DIM))]
+gesture_static_imgs = [
+    pg.transform.scale(pg.image.load("assets/staticArrows/gesture_explosion.png"), (ARROW_DIM, ARROW_DIM)),
+    pg.transform.scale(pg.image.load("assets/staticArrows/static_gesture.png"), (ARROW_DIM, ARROW_DIM))]
 
 font = pg.font.Font("serpentine.ttf", 50)
 combo_font = pg.font.Font("serpentine_reg.ttf", 100)
@@ -131,15 +135,19 @@ combo_rect.centery = SCREEN_HEIGHT // 2 + 50
 combo_rect.left = SCREEN_WIDTH // 2 + 20
 
 dynamic_sprites = pg.sprite.Group()
+gesture_sprites = pg.sprite.Group()
 left_arrows, right_arrows, up_arrows, down_arrows = \
     pg.sprite.Group(), pg.sprite.Group(), pg.sprite.Group(), pg.sprite.Group()
 static_arrows = pg.sprite.Group()
-left_static_arrow = StaticArrow(COL1_POS, GHOST_YPADDING, left_static_imgs, LEFT)
-down_static_arrow = StaticArrow(COL2_POS, GHOST_YPADDING, down_static_imgs, DOWN)
-up_static_arrow = StaticArrow(COL3_POS, GHOST_YPADDING, up_static_imgs, UP)
-right_static_arrow = StaticArrow(COL4_POS, GHOST_YPADDING, right_static_imgs, RIGHT)
+left_static_arrow = StaticArrow(COL1_POS, GHOST_YPADDING, left_static_imgs)
+down_static_arrow = StaticArrow(COL2_POS, GHOST_YPADDING, down_static_imgs)
+gesture_static_arrow = StaticArrow(COL3_POS, GHOST_YPADDING, gesture_static_imgs)
+up_static_arrow = StaticArrow(COL4_POS, GHOST_YPADDING, up_static_imgs)
+right_static_arrow = StaticArrow(COL5_POS, GHOST_YPADDING, right_static_imgs)
+
 static_arrows.add(left_static_arrow)
 static_arrows.add(down_static_arrow)
+static_arrows.add(gesture_static_arrow)
 static_arrows.add(up_static_arrow)
 static_arrows.add(right_static_arrow)
 
@@ -159,21 +167,26 @@ def draw_background(success, video_image):
 
 def make_note(dir):
     if dir == "left":
-        arrow = DynamicArrow(COL1_POS, SCREEN_HEIGHT, left_imgs, LEFT)
+        arrow = DynamicArrow(COL1_POS, SCREEN_HEIGHT, left_imgs)
         dynamic_sprites.add(arrow)
         left_arrows.add(arrow)
     if dir == "down":
-        arrow = DynamicArrow(COL2_POS, SCREEN_HEIGHT, down_imgs, DOWN)
+        arrow = DynamicArrow(COL2_POS, SCREEN_HEIGHT, down_imgs)
         dynamic_sprites.add(arrow)
         down_arrows.add(arrow)
     if dir == "up":
-        arrow = DynamicArrow(COL3_POS, SCREEN_HEIGHT, up_imgs, UP)
+        arrow = DynamicArrow(COL4_POS, SCREEN_HEIGHT, up_imgs)
         dynamic_sprites.add(arrow)
         up_arrows.add(arrow)
     if dir == "right":
-        arrow = DynamicArrow(COL4_POS, SCREEN_HEIGHT, right_imgs, RIGHT)
+        arrow = DynamicArrow(COL5_POS, SCREEN_HEIGHT, right_imgs)
         dynamic_sprites.add(arrow)
         right_arrows.add(arrow)
+    if dir == "gesture":
+        gesture_ind = random.randint(0, 7)
+        arrow = GestureArrow(COL3_POS, SCREEN_HEIGHT, gesture_imgs[gesture_ind], gestures[gesture_ind])
+        dynamic_sprites.add(arrow)
+        gesture_sprites.add(arrow)
 
 
 def get_hit(arrow, bound):
@@ -195,21 +208,21 @@ def display_score(score):
     DISPLAYSURF.blit(score_msg, score_rect)
 
 
-def handle_sensors(keys):
-    new_keys = set()
-    key = None
-    if left_analog.read() >= THRESHOLD:
-        new_keys.add(K_LEFT)
-    if down_analog.read() >= THRESHOLD:
-        new_keys.add(K_DOWN)
-    if up_analog.read() >= THRESHOLD:
-        new_keys.add(K_UP)
-    if right_analog.read() >= THRESHOLD:
-        new_keys.add(K_RIGHT)
-    diff = new_keys - keys
-    if diff:
-        key = list(diff)[0]
-    return key, new_keys
+# def handle_sensors(keys):
+#     new_keys = set()
+#     key = None
+#     if left_analog.read() >= THRESHOLD:
+#         new_keys.add(K_LEFT)
+#     if down_analog.read() >= THRESHOLD:
+#         new_keys.add(K_DOWN)
+#     if up_analog.read() >= THRESHOLD:
+#         new_keys.add(K_UP)
+#     if right_analog.read() >= THRESHOLD:
+#         new_keys.add(K_RIGHT)
+#     diff = new_keys - keys
+#     if diff:
+#         key = list(diff)[0]
+#     return key, new_keys
 
 
 def display_feedback(feedback):
@@ -292,8 +305,7 @@ feedback_tick = -1000
 feedback = ""
 mixer.music.play(start=0.25)
 last_note_time = 32 * INTERVAL - 1600
-# last_note_time = -1600
-keys_pressed = set()
+# keys_pressed = set()
 combo = 0
 score = 0
 beat_pos = 0
@@ -314,14 +326,14 @@ while True:
                     feedback_tick = cur_tick
                     combo = combo + 1 if hit != "boo" else 0
 
-    key, keys_pressed = handle_sensors(keys_pressed)
-    if key:
-        hit = handle_hits(key)
-        if hit != "":
-            score = min(9999999999, int(score + SCORES[hit] * ((1 + combo / 5) if combo_active() else 1)))
-            feedback = hit
-            feedback_tick = cur_tick
-            combo = combo + 1 if hit != "boo" else 0
+    # key, keys_pressed = handle_sensors(keys_pressed)
+    # if key:
+    #     hit = handle_hits(key)
+    #     if hit != "":
+    #         score = min(9999999999, int(score + SCORES[hit] * ((1 + combo / 5) if combo_active() else 1)))
+    #         feedback = hit
+    #         feedback_tick = cur_tick
+    #         combo = combo + 1 if hit != "boo" else 0
 
     for entity in dynamic_sprites:
         entity.move(dt * speed)
@@ -329,22 +341,19 @@ while True:
             feedback = "miss"
             feedback_tick = cur_tick
             combo = 0
-            score = max(score - 333333, 0)
-    # Takes 1515 ms to reach bottom
+            score = max(score - 333333, 0)\
 
     for entity in static_arrows:
         entity.update()
 
-    # if (INTERVAL * song_beats[0]) - LOW_INTERVAL <= mixer.music.get_pos() - last_note_time:
+
     if LOW_INTERVAL <= mixer.music.get_pos() - last_note_time and len(beat_indices) != 0:
         if beat_indices[0] == beat_pos:
-            make_note(random.choice(["left", "down", "up", "right"]))
+            make_note(random.choices(["left", "down", "up", "right", "gesture"], weights=(22.5, 22.5, 22.5, 22.5, 10),
+                                     k=1)[0])
             beat_indices.pop(0)
         beat_pos += 1
         last_note_time += INTERVAL
-        # last_note_time += INTERVAL * song_beats[0]
-        # song_beats.pop(0)
-    # note to self, have starting arrow position be when it should be, not time issue
 
     success, video_image = video.read()
     draw_background(success, video_image)
