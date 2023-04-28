@@ -2,6 +2,7 @@ from sprites import *
 from pygame import mixer
 import random
 import cv2
+import socket
 from pyfirmata import util, Arduino
 
 
@@ -13,15 +14,19 @@ fps_clock = pg.time.Clock()
 video = cv2.VideoCapture("driving-slow.mp4")
 DISPLAYSURF = pg.display.set_mode((0, 0), pg.FULLSCREEN)
 
-# board = Arduino('/dev/tty.usbmodem1101')
-# it = util.Iterator(board)
-# it.start()
-#
-# left_analog = board.get_pin('a:0:i')
-# down_analog = board.get_pin('a:1:i')
-# up_analog = board.get_pin('a:2:i')
-# right_analog = board.get_pin('a:3:i')
-# THRESHOLD = .7
+board = Arduino('COM3')
+it = util.Iterator(board)
+it.start()
+
+left_analog = board.get_pin('a:1:i')
+down_analog = board.get_pin('a:3:i')
+up_analog = board.get_pin('a:0:i')
+right_analog = board.get_pin('a:2:i')
+left_threshold = 0.7
+down_threshold = 0.7
+up_threshold = 0.87
+right_threshold = 0.72
+
 
 BEAT_INDICES = [0, 4, 8, 12, 16, 20, 24, 26, 28, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
                 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 67, 72, 75, 80, 83, 88, 89, 90, 91, 92, 96,
@@ -40,7 +45,7 @@ beat_indices = BEAT_INDICES.copy()
 
 FPS = 60
 MS_PER_FRAME = (1 / FPS) * 1000
-BPM = 170.2
+BPM = 169.85
 INTERVAL = (60000 / BPM)
 NUM_NOTES = 353
 LOW_INTERVAL = INTERVAL - (1000 / (FPS * 2))
@@ -89,11 +94,17 @@ for i in range(16):
     right_imgs.append(img)
 
 gestures = ["call_me", "fist", "okay", "peace", "rock", "stop", "thumbs_down", "thumbs_up"]
+acceptable = {"call me": ["call me", "fist", "rock", "thumbs up", "live long"], "fist": ["fist", "rock", "thumbs down", "call me"],
+              "okay": ["okay", "live long", "stop", "thumbs down", "call me"], "peace": ["peace", "live long", "call me"],
+              "rock": ["rock", "stop", "peace"], "stop": ["stop", "live long", "call me"],
+              "thumbs down": ["thumbs down", "fist", "call me"], "thumbs up": ["thumbs up", "fist", "call me", "smile", "peace"],
+              "live long": ["okay", "peace", "stop"], "smile": ["call me", "thumbs up", "thumbs down", "okay"]}
 gesture_imgs = []
 for i in gestures:
     img = pg.image.load("assets/gestures/" + i + ".png")
     img = pg.transform.scale(img, (ARROW_DIM, ARROW_DIM))
     gesture_imgs.append(img)
+gestures = ["call me", "fist", "okay", "peace", "rock", "stop", "thumbs down", "thumbs up"]
 
 left_static_imgs = [pg.transform.scale(pg.image.load("assets/staticArrows/staticLeft.png"), (ARROW_DIM, ARROW_DIM)),
                     pg.transform.scale(pg.transform.rotate(pg.image.load("OldNote/Down Tap Explosion Dim.png"), 270),
@@ -136,12 +147,14 @@ combo_rect.left = SCREEN_WIDTH // 2 + 20
 
 dynamic_sprites = pg.sprite.Group()
 gesture_sprites = pg.sprite.Group()
+static_gesture_group = pg.sprite.Group()
 left_arrows, right_arrows, up_arrows, down_arrows = \
     pg.sprite.Group(), pg.sprite.Group(), pg.sprite.Group(), pg.sprite.Group()
 static_arrows = pg.sprite.Group()
 left_static_arrow = StaticArrow(COL1_POS, GHOST_YPADDING, left_static_imgs)
 down_static_arrow = StaticArrow(COL2_POS, GHOST_YPADDING, down_static_imgs)
 gesture_static_arrow = StaticArrow(COL3_POS, GHOST_YPADDING, gesture_static_imgs)
+static_gesture_group.add(gesture_static_arrow)
 up_static_arrow = StaticArrow(COL4_POS, GHOST_YPADDING, up_static_imgs)
 right_static_arrow = StaticArrow(COL5_POS, GHOST_YPADDING, right_static_imgs)
 
@@ -163,6 +176,14 @@ def draw_background(success, video_image):
         video.set(cv2.CAP_PROP_POS_MSEC, 0)
     for entity in static_arrows:
         DISPLAYSURF.blit(entity.get_image(), entity.rect)
+
+
+def add_to_score(_hit):
+    global score, feedback, feedback_tick, combo, SCORES, cur_tick
+    score = min(9999999999, int(score + SCORES[_hit] * ((1 + combo / 5) if combo_active() else 1)))
+    feedback = _hit
+    feedback_tick = cur_tick
+    combo = combo + 1 if _hit != "boo" else 0
 
 
 def make_note(dir):
@@ -191,11 +212,11 @@ def make_note(dir):
 
 def get_hit(arrow, bound):
     pos = arrow.get_pos()
-    if GHOST_YPADDING - bound * 3 <= pos <= GHOST_YPADDING + bound * 3:
+    if GHOST_YPADDING - bound * 4 <= pos <= GHOST_YPADDING + bound * 4:
         return "perfect"
-    elif GHOST_YPADDING - bound * 5 <= pos <= GHOST_YPADDING + bound * 5:
+    elif GHOST_YPADDING - bound * 6 <= pos <= GHOST_YPADDING + bound * 6:
         return "great"
-    elif GHOST_YPADDING - bound * 7 <= pos <= GHOST_YPADDING + bound * 7:
+    elif GHOST_YPADDING - bound * 8 <= pos <= GHOST_YPADDING + bound * 8:
         return "good"
     else:
         return "boo"
@@ -208,21 +229,35 @@ def display_score(score):
     DISPLAYSURF.blit(score_msg, score_rect)
 
 
-# def handle_sensors(keys):
-#     new_keys = set()
-#     key = None
-#     if left_analog.read() >= THRESHOLD:
-#         new_keys.add(K_LEFT)
-#     if down_analog.read() >= THRESHOLD:
-#         new_keys.add(K_DOWN)
-#     if up_analog.read() >= THRESHOLD:
-#         new_keys.add(K_UP)
-#     if right_analog.read() >= THRESHOLD:
-#         new_keys.add(K_RIGHT)
-#     diff = new_keys - keys
-#     if diff:
-#         key = list(diff)[0]
-#     return key, new_keys
+def handle_sensors(keys):
+    new_keys = set()
+    key = None
+    print("")
+    if left_analog.read() >= left_threshold:
+        new_keys.add(K_LEFT)
+    if down_analog.read() >= down_threshold:
+        new_keys.add(K_DOWN)
+    if up_analog.read() >= up_threshold:
+        new_keys.add(K_UP)
+    if right_analog.read() >= right_threshold:
+        new_keys.add(K_RIGHT)
+    diff = new_keys - keys
+    if diff:
+        key = list(diff)[0]
+    return key, new_keys
+
+
+def handle_gestures(cur_gesture):
+    global acceptable
+    collisions = pg.sprite.groupcollide(gesture_sprites, static_gesture_group, False, False)
+    if collisions and cur_gesture:
+        gesture_arrow = list(collisions.keys())[0]
+        if gesture_arrow.get_pos() <= GHOST_YPADDING:
+            print("Expected: " + str(gesture_arrow.get_gesture()) + ", Current: " + cur_gesture)
+            if cur_gesture in acceptable[gesture_arrow.get_gesture()]:
+                gesture_arrow.kill()
+                return "perfect"
+    return ""
 
 
 def display_feedback(feedback):
@@ -256,7 +291,7 @@ def display_combo(combo_disp):
 
 
 def restart():
-    global combo, score, last_note_time, feedback_tick, beat_pos, beat_indices
+    global combo, score, last_note_time, feedback_tick, beat_pos, beat_indices, feedback
     beat_indices = BEAT_INDICES.copy()
     beat_pos = 0
     combo = 0
@@ -265,9 +300,9 @@ def restart():
     feedback_tick = -1000
     mixer.music.stop()
     mixer.music.play(start=0.25)
+    feedback = ""
     for entity in dynamic_sprites:
         entity.kill()
-        feedback = ""
 
 
 def handle_hits(key):
@@ -305,11 +340,34 @@ feedback_tick = -1000
 feedback = ""
 mixer.music.play(start=0.25)
 last_note_time = 32 * INTERVAL - 1600
-# keys_pressed = set()
+keys_pressed = set()
 combo = 0
 score = 0
 beat_pos = 0
+current_gesture = ""
+
+UDP_IP = "127.0.0.1"
+UDP_PORT = 5005
+
+sock = socket.socket(socket.AF_INET, # Internet
+                     socket.SOCK_DGRAM) # UDP
+sock.bind((UDP_IP, UDP_PORT))
+sock.setblocking(0)
+
+past_gesture = pg.time.get_ticks()
+
 while True:
+    try:
+        data, addr = sock.recvfrom(1024)  # buffer size is 1024 bytes
+        decoded = data.decode("utf-8")
+        current_gesture = decoded
+        past_gesture = pg.time.get_ticks()
+    except:
+        pass
+    if pg.time.get_ticks() - past_gesture >= 500:
+        current_gesture = ""
+    print(current_gesture)
+
     cur_tick = pg.time.get_ticks()
     for event in pg.event.get():
         if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
@@ -321,19 +379,18 @@ while True:
             else:
                 hit = handle_hits(event.key)
                 if hit != "":
-                    score = min(9999999999, int(score + SCORES[hit] * ((1 + combo / 5) if combo_active() else 1)))
-                    feedback = hit
-                    feedback_tick = cur_tick
-                    combo = combo + 1 if hit != "boo" else 0
+                    add_to_score(hit)
 
-    # key, keys_pressed = handle_sensors(keys_pressed)
-    # if key:
-    #     hit = handle_hits(key)
-    #     if hit != "":
-    #         score = min(9999999999, int(score + SCORES[hit] * ((1 + combo / 5) if combo_active() else 1)))
-    #         feedback = hit
-    #         feedback_tick = cur_tick
-    #         combo = combo + 1 if hit != "boo" else 0
+    key, keys_pressed = handle_sensors(keys_pressed)
+    if key:
+        hit = handle_hits(key)
+        if hit != "":
+            add_to_score(hit)
+
+    hit = handle_gestures(current_gesture)
+    if hit != "":
+        add_to_score(hit)
+
 
     for entity in dynamic_sprites:
         entity.move(dt * speed)
@@ -341,7 +398,7 @@ while True:
             feedback = "miss"
             feedback_tick = cur_tick
             combo = 0
-            score = max(score - 333333, 0)\
+            score = max(score - 333333, 0)
 
     for entity in static_arrows:
         entity.update()
@@ -349,9 +406,12 @@ while True:
 
     if LOW_INTERVAL <= mixer.music.get_pos() - last_note_time and len(beat_indices) != 0:
         if beat_indices[0] == beat_pos:
-            make_note(random.choices(["left", "down", "up", "right", "gesture"], weights=(22.5, 22.5, 22.5, 22.5, 10),
-                                     k=1)[0])
-            beat_indices.pop(0)
+            if len(beat_indices) == 1 or beat_indices[1] > beat_indices[0] + 1:
+                make_note("gesture")
+                beat_indices.pop(0)
+            else:
+                make_note(random.choice(["left", "down", "up", "right"]))
+                beat_indices.pop(0)
         beat_pos += 1
         last_note_time += INTERVAL
 

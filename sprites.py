@@ -35,6 +35,9 @@ class GestureArrow(pg.sprite.Sprite):
     def get_pos(self):
         return self.y
 
+    def get_gesture(self):
+        return self.gesture
+
     def get_image(self):
         return self.image
 
